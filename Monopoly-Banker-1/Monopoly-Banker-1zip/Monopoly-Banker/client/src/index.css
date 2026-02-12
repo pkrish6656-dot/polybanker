@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fix mobile scrolling and drawer jumping */
+html, body {
+  overflow-x: hidden;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Prevent iOS rubber banding when drawer is open */
+[data-vaul-drawer] {
+  touch-action: none;
+}
+
+[data-vaul-drawer-content] {
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+/* Hardware acceleration for smoother animations */
+.animate-in, .animate-out, .transition-all {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+:root {
+  --background: 45 30% 96%;
+  --foreground: 155 40% 15%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 155 40% 15%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 155 40% 15%;
+
+  --primary: 155 50% 35%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 45 30% 90%;
+  --secondary-foreground: 155 50% 25%;
+
+  --muted: 45 20% 90%;
+  --muted-foreground: 155 20% 40%;
+
+  --accent: 35 80% 60%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 155 20% 85%;
+  --input: 155 20% 85%;
+  --ring: 155 50% 35%;
+  
+  --radius: 0.75rem;
+
+  --font-sans: 'Manrope', 'Inter', sans-serif;
+  --font-serif: 'Cinzel', Georgia, serif;
+  --font-mono: Menlo, monospace;
+}
+
+.dark {
+  --background: 155 40% 5%;
+  --foreground: 45 30% 90%;
+
+  --card: 155 40% 8%;
+  --card-foreground: 45 30% 90%;
+
+  --popover: 155 40% 8%;
+  --popover-foreground: 45 30% 90%;
+
+  --primary: 155 50% 45%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 155 30% 15%;
+  --secondary-foreground: 45 30% 90%;
+
+  --muted: 155 30% 15%;
+  --muted-foreground: 155 20% 60%;
+
+  --accent: 35 70% 50%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 60% 40%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 155 30% 20%;
+  --input: 155 30% 20%;
+  --ring: 155 50% 45%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
