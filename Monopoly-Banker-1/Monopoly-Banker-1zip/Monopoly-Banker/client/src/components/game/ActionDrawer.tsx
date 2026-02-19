@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { ArrowRightLeft, Building2, Coins, HandCoins, Home, RefreshCcw, Skull, Gift, Shuffle } from "lucide-react";
+import { ArrowRightLeft, Building2, Coins, HandCoins, Home, RefreshCcw, Skull, Gift, Shuffle, LockKeyhole, KeyRound, Dices, ShieldAlert, Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
-type ActionType = 'pass_go' | 'pay' | 'receive' | 'buy' | 'rent' | 'build' | 'bankruptcy' | 'jackpot' | 'sale_card' | 'spin' | 'trade' | null;
+type ActionType = 'pass_go' | 'pay' | 'receive' | 'buy' | 'rent' | 'build' | 'bankruptcy' | 'jackpot' | 'sale_card' | 'spin' | 'trade' | 'go_to_jail' | 'jail_bail' | 'jail_card' | 'jail_failed_doubles' | 'jail_release' | null;
 
 const ACTIONS = [
   { id: 'pass_go', label: 'Pass GO', icon: RefreshCcw, color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
@@ -23,6 +23,11 @@ const ACTIONS = [
   { id: 'rent', label: 'Pay Rent', icon: Coins, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
   { id: 'build', label: 'Build', icon: Building2, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
   { id: 'trade', label: 'Trade', icon: Shuffle, color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' },
+  { id: 'go_to_jail', label: 'Go to Jail', icon: LockKeyhole, color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
+  { id: 'jail_bail', label: 'Pay Bail', icon: Gavel, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  { id: 'jail_card', label: 'Use Jail Card', icon: KeyRound, color: 'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-400' },
+  { id: 'jail_failed_doubles', label: '3rd Miss', icon: ShieldAlert, color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  { id: 'jail_release', label: 'Rolled Doubles', icon: Dices, color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
   { id: 'sale_card', label: 'Sale Card', icon: Coins, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' },
   { id: 'spin', label: 'Spin!', icon: RefreshCcw, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
   { id: 'bankruptcy', label: 'Bankrupt', icon: Skull, color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
@@ -31,7 +36,9 @@ const ACTIONS = [
 const ACTION_TITLES: Record<string, string> = {
   pass_go: "Pass GO", pay: "Pay Money", receive: "Receive Money", buy: "Buy Property",
   rent: "Pay Rent", build: "Build House/Hotel", bankruptcy: "Declare Bankruptcy", jackpot: "Collect Jackpot",
-  sale_card: "Buy Sale Card", spin: "Free Parking Spin", trade: "Property Trade"
+  sale_card: "Buy Sale Card", spin: "Free Parking Spin", trade: "Property Trade",
+  go_to_jail: "Send Player to Jail", jail_bail: "Pay $50 Bail", jail_card: "Use Get Out of Jail Free",
+  jail_failed_doubles: "Third Failed Double Roll", jail_release: "Roll Doubles and Leave Jail"
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -101,7 +108,7 @@ export function ActionDrawer({ player, open, onOpenChange }: ActionDrawerProps) 
 }
 
 function ActionForm({ type, player, onBack, onComplete }: { type: ActionType, player: any, onBack: () => void, onComplete: () => void }) {
-  const { transferMoney, buyProperty, players, properties, buildHouse, buildHouseFree, settings, declareBankruptcy, bank, executeTrade } = useGameStore();
+  const { transferMoney, buyProperty, players, properties, buildHouse, buildHouseFree, settings, declareBankruptcy, bank, executeTrade, addTransaction } = useGameStore();
   const [amount, setAmount] = useState("");
   const [targetId, setTargetId] = useState("");
   const [sourceId, setSourceId] = useState("");
@@ -109,6 +116,7 @@ function ActionForm({ type, player, onBack, onComplete }: { type: ActionType, pl
   const [payTo, setPayTo] = useState("BANK");
   const [isFree, setIsFree] = useState(false);
   const [creditorId, setCreditorId] = useState("");
+  const [jailNote, setJailNote] = useState("");
   
   // Trade state
   const [tradePartnerId, setTradePartnerId] = useState("");
@@ -129,6 +137,11 @@ function ActionForm({ type, player, onBack, onComplete }: { type: ActionType, pl
       }
     }
   }, [propertyId, type, properties]);
+
+  useEffect(() => {
+    if (type === 'jail_bail' || type === 'jail_failed_doubles') setAmount("50");
+    if (type === 'jail_bail') setTargetId("BANK");
+  }, [type]);
 
   const handleSubmit = () => {
     const val = parseInt(amount);
@@ -152,6 +165,21 @@ function ActionForm({ type, player, onBack, onComplete }: { type: ActionType, pl
     else if (type === 'spin') {
       if (val && targetId) transferMoney(player.id, targetId, val, "Spin Penalty");
       else if (val && sourceId) transferMoney(sourceId, player.id, val, "Spin Reward");
+    }
+    else if (type === 'go_to_jail') {
+      addTransaction(`${player.name} was sent to Jail. ${jailNote || 'Do not collect $200 for passing GO.'}`);
+    }
+    else if (type === 'jail_bail' && val) {
+      transferMoney(player.id, targetId || 'BANK', val, "Jail Bail");
+    }
+    else if (type === 'jail_card') {
+      addTransaction(`${player.name} used a Get Out of Jail Free card.${jailNote ? ` ${jailNote}` : ''}`);
+    }
+    else if (type === 'jail_failed_doubles' && val) {
+      transferMoney(player.id, 'BANK', val, "Jail Fine (3 Failed Doubles)");
+    }
+    else if (type === 'jail_release') {
+      addTransaction(`${player.name} rolled doubles and got out of Jail.${jailNote ? ` ${jailNote}` : ''}`);
     }
     else if (type === 'trade' && tradePartnerId) {
       executeTrade(player.id, tradePartnerId, 
@@ -384,6 +412,62 @@ function ActionForm({ type, player, onBack, onComplete }: { type: ActionType, pl
              <Button variant={sourceId === 'FREE_PARKING' ? 'default' : 'outline'} onClick={() => { setSourceId('FREE_PARKING'); setTargetId(''); }}>Collect from Jackpot</Button>
           </div>
           <PlayerSelect label="Other (e.g. Bank/Player)" value={targetId || sourceId} onChange={(v) => { if (targetId) setTargetId(v); else setSourceId(v); }} includeBank />
+        </div>
+      )}
+      {type === 'go_to_jail' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border bg-rose-50 dark:bg-rose-900/20 text-sm space-y-2">
+            <p className="font-semibold">Monopoly Jail Rule Details</p>
+            <ul className="list-disc ml-4 space-y-1">
+              <li>Move token directly to Jail.</li>
+              <li>Do not collect $200 when sent to Jail.</li>
+              <li>Player may still collect rent while in Jail.</li>
+            </ul>
+          </div>
+          <div className="space-y-2">
+            <Label>Optional Note</Label>
+            <Input value={jailNote} onChange={e => setJailNote(e.target.value)} placeholder="e.g. Drew 'Go to Jail' chance card" />
+          </div>
+        </div>
+      )}
+      {type === 'jail_bail' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border bg-amber-50 dark:bg-amber-900/20 text-sm italic">
+            "A player may pay $50 before rolling to leave Jail immediately."
+          </div>
+          <AmountInput label="Bail Amount" value={amount} onChange={setAmount} autoFocus />
+          <PlayerSelect label="Pay To" value={targetId} onChange={setTargetId} includeBank />
+        </div>
+      )}
+      {type === 'jail_card' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border bg-lime-50 dark:bg-lime-900/20 text-sm space-y-1">
+            <p>Use a <strong>Get Out of Jail Free</strong> card to leave Jail without paying.</p>
+            <p>The card is then returned to the deck (or traded if your house rules allow).</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Optional Note</Label>
+            <Input value={jailNote} onChange={e => setJailNote(e.target.value)} placeholder="e.g. Community Chest card used" />
+          </div>
+        </div>
+      )}
+      {type === 'jail_failed_doubles' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border bg-red-50 dark:bg-red-900/20 text-sm">
+            If the player fails to roll doubles in 3 turns, they must pay $50 and then move.
+          </div>
+          <AmountInput label="Fine Amount" value={amount} onChange={setAmount} autoFocus />
+        </div>
+      )}
+      {type === 'jail_release' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border bg-teal-50 dark:bg-teal-900/20 text-sm">
+            Player rolled doubles and leaves Jail this turn. Record any house-rule notes below.
+          </div>
+          <div className="space-y-2">
+            <Label>Optional Note</Label>
+            <Input value={jailNote} onChange={e => setJailNote(e.target.value)} placeholder="e.g. Moved 8 spaces after rolling doubles" />
+          </div>
         </div>
       )}
       <div className="flex gap-3 pt-4">
